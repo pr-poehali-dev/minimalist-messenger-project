@@ -11,6 +11,7 @@ interface SidebarProps {
 const Sidebar = ({ activeTab, onTabChange, user }: SidebarProps) => {
   const tabs = [
     { id: 'chats', icon: 'MessageCircle', label: 'Чаты' },
+    { id: 'search', icon: 'Search', label: 'Поиск' },
     { id: 'friends', icon: 'Users', label: 'Друзья' },
     { id: 'shop', icon: 'Gift', label: 'Магазин' },
     { id: 'wallet', icon: 'Wallet', label: 'Кошелек' },

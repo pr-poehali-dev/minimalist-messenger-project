@@ -3,8 +3,11 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import Icon from '@/components/ui/icon';
 
 const API_SHOP = 'https://functions.poehali.dev/9c86760f-5d17-4ca7-8897-49fffde89de7';
+const API_PROFILE = 'https://functions.poehali.dev/d3bbd524-2bbb-4c3a-a512-cff22dca10a6';
 
 interface ShopProps {
   userId: number;
@@ -15,6 +18,9 @@ const Shop = ({ userId }: ShopProps) => {
   const [myGifts, setMyGifts] = useState<any[]>([]);
   const [balance, setBalance] = useState({ balance: 0, raccoon_coins: 0 });
   const [selectedGift, setSelectedGift] = useState<any>(null);
+  const [sendGiftMode, setSendGiftMode] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -75,6 +81,44 @@ const Shop = ({ userId }: ShopProps) => {
       }
     } catch (error) {
       toast({ title: 'Ошибка покупки', variant: 'destructive' });
+    }
+  };
+
+  const searchUsers = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    try {
+      const res = await fetch(`${API_PROFILE}?action=search_users&query=${encodeURIComponent(query)}`, {
+        headers: { 'X-User-Id': userId.toString() }
+      });
+      const data = await res.json();
+      setSearchResults(data.users || []);
+    } catch (error) {
+      console.error('Failed to search users', error);
+    }
+  };
+
+  const sendGiftToUser = async (receiverId: number) => {
+    try {
+      const res = await fetch(API_SHOP, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-User-Id': userId.toString() },
+        body: JSON.stringify({ action: 'send_gift', user_gift_id: sendGiftMode.id, receiver_id: receiverId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: 'Подарок отправлен!' });
+        loadMyGifts();
+        setSendGiftMode(null);
+        setSearchQuery('');
+        setSearchResults([]);
+      } else {
+        toast({ title: 'Ошибка отправки', variant: 'destructive' });
+      }
+    } catch (error) {
+      toast({ title: 'Ошибка отправки', variant: 'destructive' });
     }
   };
 
@@ -142,7 +186,7 @@ const Shop = ({ userId }: ShopProps) => {
               {myGifts.map((gift: any) => (
                 <div
                   key={gift.id}
-                  className="bg-[#1A1F2C] p-4 rounded-lg"
+                  className="bg-[#1A1F2C] p-4 rounded-lg relative group"
                 >
                   <div className="text-5xl mb-2">{gift.emoji}</div>
                   <p className="text-white text-sm font-medium">{gift.name}</p>
@@ -150,6 +194,14 @@ const Shop = ({ userId }: ShopProps) => {
                     <p className="text-gray-400 text-xs mt-1">От: @{gift.sender}</p>
                   )}
                   <p className="text-[#9b87f5] text-xs mt-2">x{gift.quantity}</p>
+                  <Button
+                    size="sm"
+                    onClick={() => setSendGiftMode(gift)}
+                    className="w-full mt-3 bg-[#9b87f5] hover:bg-[#7E69AB] text-xs"
+                  >
+                    <Icon name="Send" size={14} className="mr-1" />
+                    Отправить
+                  </Button>
                 </div>
               ))}
               {myGifts.length === 0 && (
@@ -178,6 +230,49 @@ const Shop = ({ userId }: ShopProps) => {
                 >
                   {balance.raccoon_coins >= selectedGift.price ? 'Купить' : 'Недостаточно енотиков'}
                 </Button>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!sendGiftMode} onOpenChange={() => { setSendGiftMode(null); setSearchQuery(''); setSearchResults([]); }}>
+          <DialogContent className="bg-[#1A1F2C] border-gray-700 text-white">
+            <DialogHeader>
+              <DialogTitle>Отправить подарок</DialogTitle>
+            </DialogHeader>
+            {sendGiftMode && (
+              <div>
+                <div className="text-center mb-4">
+                  <div className="text-6xl mb-2">{sendGiftMode.emoji}</div>
+                  <p className="text-white font-medium">{sendGiftMode.name}</p>
+                </div>
+                <Input
+                  placeholder="Поиск пользователя..."
+                  value={searchQuery}
+                  onChange={(e) => { setSearchQuery(e.target.value); searchUsers(e.target.value); }}
+                  className="bg-[#0F1419] border-gray-700 text-white mb-4"
+                />
+                <div className="max-h-64 overflow-y-auto space-y-2">
+                  {searchResults.map((user: any) => (
+                    <button
+                      key={user.id}
+                      onClick={() => sendGiftToUser(user.id)}
+                      className="w-full flex items-center gap-3 p-3 bg-[#0F1419] hover:bg-[#9b87f5]/10 rounded-lg transition-colors"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-[#9b87f5] flex items-center justify-center text-white font-bold">
+                        {user.avatar_url ? <img src={user.avatar_url} alt="" className="w-full h-full rounded-full" /> : user.username[0].toUpperCase()}
+                      </div>
+                      <div className="flex-1 text-left">
+                        <p className="text-white font-medium">{user.display_name}</p>
+                        <p className="text-gray-400 text-sm">@{user.username}</p>
+                      </div>
+                      {user.has_verification && <span className="text-blue-400">✓</span>}
+                    </button>
+                  ))}
+                  {searchQuery && searchResults.length === 0 && (
+                    <p className="text-gray-400 text-center py-4">Пользователи не найдены</p>
+                  )}
+                </div>
               </div>
             )}
           </DialogContent>

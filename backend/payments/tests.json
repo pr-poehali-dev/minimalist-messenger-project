@@ -1,0 +1,8 @@
+{
+  "tests": [{
+    "name": "Test payments API OPTIONS",
+    "method": "OPTIONS",
+    "path": "/",
+    "expectedStatus": 200
+  }]
+}

@@ -8,6 +8,7 @@ import Wallet from './Wallet';
 import Music from './Music';
 import Settings from './Settings';
 import Friends from './Friends';
+import SearchUsers from './SearchUsers';
 
 interface MainLayoutProps {
   user: any;
@@ -15,7 +16,7 @@ interface MainLayoutProps {
 }
 
 const MainLayout = ({ user, onLogout }: MainLayoutProps) => {
-  const [activeTab, setActiveTab] = useState<'chats' | 'profile' | 'shop' | 'wallet' | 'music' | 'settings' | 'friends'>('chats');
+  const [activeTab, setActiveTab] = useState<'chats' | 'profile' | 'shop' | 'wallet' | 'music' | 'settings' | 'friends' | 'search'>('chats');
   const [selectedChat, setSelectedChat] = useState<any>(null);
   const [userData, setUserData] = useState(user);
 
@@ -70,6 +71,12 @@ const MainLayout = ({ user, onLogout }: MainLayoutProps) => {
 
     if (activeTab === 'friends') {
       return <Friends userId={userData.id} />;
+    }
+
+    if (activeTab === 'search') {
+      return <SearchUsers userId={userData.id} onChatCreated={(chatId) => {
+        setActiveTab('chats');
+      }} />;
     }
 
     if (activeTab === 'settings') {

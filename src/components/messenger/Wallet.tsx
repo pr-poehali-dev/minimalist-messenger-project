@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import Icon from '@/components/ui/icon';
 
 const API_SHOP = 'https://functions.poehali.dev/9c86760f-5d17-4ca7-8897-49fffde89de7';
+const API_PAYMENTS = 'https://functions.poehali.dev/67e1e046-f90a-4e98-b995-9f0f4b3391bf';
 
 interface WalletProps {
   userId: number;
@@ -41,20 +42,21 @@ const Wallet = ({ userId, onUpdateBalance }: WalletProps) => {
     }
 
     try {
-      const res = await fetch(API_SHOP, {
+      const res = await fetch(API_PAYMENTS, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-User-Id': userId.toString() },
-        body: JSON.stringify({ action: 'add_balance', amount })
+        body: JSON.stringify({
+          action: 'create_payment',
+          amount: amount,
+          return_url: window.location.href
+        })
       });
       const data = await res.json();
       if (data.success) {
-        toast({ title: 'Баланс пополнен!' });
-        setAddAmount('');
-        loadBalance();
-        onUpdateBalance(balance.balance + amount, balance.raccoon_coins);
+        window.location.href = data.confirmation_url;
       }
     } catch (error) {
-      toast({ title: 'Ошибка пополнения', variant: 'destructive' });
+      toast({ title: 'Ошибка создания платежа', variant: 'destructive' });
     }
   };
 
@@ -135,8 +137,10 @@ const Wallet = ({ userId, onUpdateBalance }: WalletProps) => {
                 ))}
               </div>
               <Button onClick={addBalance} className="w-full bg-[#9b87f5] hover:bg-[#7E69AB]">
-                Пополнить
+                <Icon name="CreditCard" size={16} className="mr-2" />
+                Оплатить картой
               </Button>
+              <p className="text-xs text-gray-400 text-center">Оплата через ЮKassa</p>
             </div>
           </div>
 

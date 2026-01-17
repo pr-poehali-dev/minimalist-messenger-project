@@ -1,6 +1,9 @@
 import json
 import os
 import psycopg2
+import boto3
+import base64
+import uuid
 from datetime import datetime
 
 def handler(event: dict, context) -> dict:
@@ -22,6 +25,12 @@ def handler(event: dict, context) -> dict:
     db_url = os.environ['DATABASE_URL']
     conn = psycopg2.connect(db_url)
     cur = conn.cursor()
+    
+    s3 = boto3.client('s3',
+        endpoint_url='https://bucket.poehali.dev',
+        aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
+        aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
+    )
     
     try:
         user_id = event.get('headers', {}).get('X-User-Id') or event.get('headers', {}).get('x-user-id')
@@ -147,8 +156,25 @@ def handler(event: dict, context) -> dict:
                 content = body.get('content')
                 message_type = body.get('message_type', 'text')
                 file_url = body.get('file_url')
+                file_data = body.get('file_data')
+                file_type = body.get('file_type')
                 duration = body.get('duration')
                 reply_to = body.get('reply_to')
+                
+                if file_data:
+                    file_bytes = base64.b64decode(file_data)
+                    file_ext = 'jpg' if 'image' in file_type else 'ogg'
+                    unique_name = f"{uuid.uuid4()}.{file_ext}"
+                    key = f"uploads/{datetime.now().year}/{datetime.now().month}/{unique_name}"
+                    
+                    s3.put_object(
+                        Bucket='files',
+                        Key=key,
+                        Body=file_bytes,
+                        ContentType=file_type
+                    )
+                    
+                    file_url = f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
                 
                 cur.execute(
                     "INSERT INTO messages (chat_id, sender_id, content, message_type, file_url, duration, reply_to) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id, created_at",
