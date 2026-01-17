@@ -86,23 +86,30 @@ def handler(event: dict, context) -> dict:
                 password_hash = hashlib.sha256(password.encode()).hexdigest()
                 
                 cur.execute(
-                    "INSERT INTO users (phone, username, display_name, password_hash) VALUES (%s, %s, %s, %s) RETURNING id, username, display_name",
+                    "INSERT INTO users (phone, username, display_name, password_hash) VALUES (%s, %s, %s, %s) RETURNING id",
                     (phone, username, display_name, password_hash)
                 )
-                user = cur.fetchone()
+                user_id = cur.fetchone()[0]
                 
                 # Создаем чат "Сохраненные сообщения"
                 cur.execute(
                     "INSERT INTO chats (type, name, created_by) VALUES ('saved', 'Сохраненные сообщения', %s) RETURNING id",
-                    (user[0],)
+                    (user_id,)
                 )
                 saved_chat_id = cur.fetchone()[0]
                 cur.execute(
                     "INSERT INTO chat_members (chat_id, user_id, role) VALUES (%s, %s, 'owner')",
-                    (saved_chat_id, user[0])
+                    (saved_chat_id, user_id)
                 )
                 
                 conn.commit()
+                
+                # Получаем полный профиль пользователя
+                cur.execute(
+                    "SELECT id, username, display_name, avatar_url, banner_url, bio, status, status_emoji, has_verification, balance, raccoon_coins FROM users WHERE id = %s",
+                    (user_id,)
+                )
+                user = cur.fetchone()
                 
                 return {
                     'statusCode': 200,
@@ -112,7 +119,15 @@ def handler(event: dict, context) -> dict:
                         'user': {
                             'id': user[0],
                             'username': user[1],
-                            'display_name': user[2]
+                            'display_name': user[2],
+                            'avatar_url': user[3],
+                            'banner_url': user[4],
+                            'bio': user[5],
+                            'status': user[6],
+                            'status_emoji': user[7],
+                            'has_verification': user[8],
+                            'balance': float(user[9]) if user[9] else 0,
+                            'raccoon_coins': user[10]
                         }
                     })
                 }
