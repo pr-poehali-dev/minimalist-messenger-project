@@ -1,14 +1,42 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState, useEffect } from 'react';
+import Auth from '@/components/messenger/Auth';
+import MainLayout from '@/components/messenger/MainLayout';
 
 const Index = () => {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4 color-black text-black">Добро пожаловать!</h1>
-        <p className="text-xl text-gray-600">тут будет отображаться ваш проект</p>
+  const [user, setUser] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem('speakly_user');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
+    setIsLoading(false);
+  }, []);
+
+  const handleLogin = (userData: any) => {
+    setUser(userData);
+    localStorage.setItem('speakly_user', JSON.stringify(userData));
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem('speakly_user');
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#0F1419] flex items-center justify-center">
+        <div className="text-[#9b87f5] text-xl">Загрузка...</div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  if (!user) {
+    return <Auth onLogin={handleLogin} />;
+  }
+
+  return <MainLayout user={user} onLogout={handleLogout} />;
 };
 
 export default Index;
